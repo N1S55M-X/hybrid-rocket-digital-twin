@@ -25,12 +25,3 @@ The result is a hybrid simulation that blends physics‑based modeling with AI c
 # Clone your repo
 git clone https://github.com/N1S55M-X/hybrid-rocket-digital-twin.git
 
-# Move into the repo folder
-cd hybrid-rocket-digital-twin
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the simulation
-python main.py
-

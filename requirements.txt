@@ -1,5 +1,5 @@
 numpy==1.26.4
-matplotlib
+matplotlib==3.8.3
 tensorflow==2.18.0
-rocketpy
-ipython
+rocketpy==0.10.0
+ipython==8.22.2

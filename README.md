@@ -22,6 +22,11 @@ The result is a hybrid simulation that blends physics‑based modeling with AI c
 <img width="1200" height="700" alt="download (1)" src="https://github.com/user-attachments/assets/0235b84a-6495-4452-92e3-5231d39b495e" />
 <img width="1200" height="700" alt="download (2)" src="https://github.com/user-attachments/assets/6ed12bca-6c18-4840-8f97-a68e66432f36" />
 
-# Clone your repo
-git clone https://github.com/N1S55M-X/hybrid-rocket-digital-twin.git
+---
 
+## Quickstart
+
+Clone the repository:
+
+```bash
+git clone https://github.com/N1S55M-X/hybrid-rocket-digital-twin.git

@@ -2,36 +2,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.optimizers import SGD
 from rocketpy import Rocket, SolidMotor, Environment, Flight
 from IPython.display import HTML
 
 # ====================== ROCKETPY SETUP ======================
-# Environment setup for New Mexico (Spaceport America)
 env = Environment(latitude=32.99, longitude=-106.97, elevation=1400)
 env.set_date(date=(2025, 6, 15, 12), timezone="UTC")
 
-# Motor definition
 motor = SolidMotor(
-    thrust_source=2800, 
-    burn_time=6.0, 
-    dry_mass=1.8,
+    thrust_source=2800, burn_time=6.0, dry_mass=1.8,
     dry_inertia=(0.2, 0.2, 0.02),
     center_of_dry_mass_position=0.3,
-    grain_number=1, 
-    grain_density=1700,
-    grain_outer_radius=0.045, 
-    grain_initial_inner_radius=0.015,
-    grain_initial_height=0.35, 
-    grain_separation=0.0,  # <--- Add this line here
+    grain_number=1, grain_density=1700,
+    grain_outer_radius=0.045, grain_initial_inner_radius=0.015,
+    grain_initial_height=0.35, grain_separation=0.0,
     grains_center_of_mass_position=0.397,
-    nozzle_radius=0.035, 
-    nozzle_position=0.0
+    nozzle_radius=0.035, nozzle_position=0.0
 )
 
-
-# Rocket definition
 rocket = Rocket(
     radius=0.085, mass=12.0, inertia=(12, 12, 0.6),
     power_off_drag=0.5, power_on_drag=0.8,
@@ -43,15 +33,19 @@ rocket.add_nose(length=0.7, kind="vonkarman", position=2.1)
 rocket.add_trapezoidal_fins(n=4, root_chord=0.32, tip_chord=0.15, span=0.18, sweep_length=0.12, position=0.4)
 rocket.add_tail(top_radius=0.085, bottom_radius=0.06, length=0.25, position=0.1)
 
-# Run a baseline simulation to extract physics data
-# Note: We use the Flight object to get high-fidelity mass/thrust curves
 test_flight = Flight(rocket=rocket, environment=env, rail_length=5.0, inclination=89, heading=0)
 
 # ====================== HYBRID AI SETUP ======================
-nn = Sequential([Dense(32, activation='relu', input_shape=(1,)), Dense(16, activation='relu'), Dense(1)])
+nn = Sequential([
+    Input(shape=(1,)), 
+    Dense(32, activation='relu'), 
+    Dense(16, activation='relu'), 
+    Dense(1)
+])
 nn.compile(optimizer=SGD(learning_rate=0.01), loss='mse')
-# Training on a simple stabilization bias
-nn.fit(np.linspace(-0.6,0.6,1000).reshape(-1,1), np.linspace(-0.6,0.6,1000).reshape(-1,1)*0.15, epochs=10, verbose=0)
+nn.fit(np.linspace(-0.6,0.6,1000).reshape(-1,1), 
+       np.linspace(-0.6,0.6,1000).reshape(-1,1)*0.15, 
+       epochs=10, verbose=0)
 
 # ====================== ANIMATION ENGINE ======================
 fig, ax = plt.subplots(figsize=(12, 7))
@@ -59,7 +53,7 @@ ax.set_xlim(-300, 300)
 ax.set_ylim(0, 600)
 ax.set_aspect('equal')
 ax.set_facecolor('#050520')
-ax.set_title('🚀 RocketPy Physics Engine + Hybrid AI Digital Twin', color='white')
+ax.set_title('RocketPy Physics Engine + Hybrid AI Digital Twin', color='white')
 
 rocket_line, = ax.plot([], [], 'w-', linewidth=18, solid_capstyle='round')
 nose_cone, = ax.plot([], [], 'red', linewidth=24)
@@ -70,38 +64,30 @@ angle_text = ax.text(-280, 550, '', fontsize=12, color='white', bbox=dict(faceco
 dt = 0.02
 theta, omega = np.deg2rad(5.0), 0.0
 integral, last_error = 0.0, 0.0
-Kp, Ki, Kd = 150.0, 40.0, 60.0 # Aggressive TVC Gains
+Kp, Ki, Kd = 150.0, 40.0, 60.0
 
 def update(frame):
     global theta, omega, integral, last_error
     t = frame * dt
     
-    # 1. GET PHYSICS FROM ROCKETPY
-    # Fetch instantaneous thrust and mass from the simulation engine
     current_thrust = motor.thrust(t)
     current_mass = rocket.total_mass(t)
-    inertia = rocket.I_22(t) # Moment of inertia around transverse axis
+    inertia = rocket.I_22(t)
     
-    # 2. CONTROL LOGIC (PID)
     error = -theta
     integral += error * dt
     derivative = (error - last_error) / dt
     last_error = error
     gimbal = np.clip(Kp*error + Ki*integral + Kd*derivative, -0.4, 0.4)
 
-    # 3. PHYSICS INTEGRATION
-    # Torque = Thrust * MomentArm * sin(gimbal) + GravityTorque
     torque = (current_thrust * 1.85 * np.sin(gimbal)) + (-9.81 * current_mass * np.sin(theta) * 0.8)
     alpha = torque / inertia
     omega += alpha * dt
     theta += omega * dt
 
-    # 4. AI CORRECTION LAYER
-    # Mimics digital twin error compensation
     ai_bias = nn.predict(np.array([[theta]]), verbose=0)[0][0]
     theta_vis = theta + (ai_bias * 0.2)
 
-    # 5. DRAWING
     cx, cy = 0, 150
     L_vis = 200
     x2, y2 = cx + L_vis * np.sin(theta_vis), cy - L_vis * np.cos(theta_vis)
@@ -120,4 +106,5 @@ def update(frame):
     return rocket_line, nose_cone, flame, angle_text
 
 ani = FuncAnimation(fig, update, frames=300, interval=20, blit=True)
+plt.close(fig) # Prevents an extra static plot from appearing
 HTML(ani.to_jshtml())

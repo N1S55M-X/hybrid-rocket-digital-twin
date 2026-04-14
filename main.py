@@ -1,4 +1,8 @@
 import numpy as np
+# Patch RocketPy's trapezoid import if missing
+if not hasattr(np, "trapezoid"):
+    np.trapezoid = np.trapz
+
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from tensorflow.keras.models import Sequential
